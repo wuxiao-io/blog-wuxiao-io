@@ -1,0 +1,41 @@
+name: Gatsby Publish
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+    concurrency:
+      group: ${{ github.workflow }} - ${{ github.ref }}
+    steps:
+      - uses: actions/checkout@master
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Deploy
+        uses: reggionick/s3-deploy@v3
+        with:
+          folder: public
+          bucket: ${{secrets.AWS_S3_BUCKET}}
+          bucket-region: ${{secrets.AWS_S3_BUCKET_REGION}}
+          delete-removed: true
+          no-cache: true
+          private: true
